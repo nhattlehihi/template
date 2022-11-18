@@ -1,0 +1,296 @@
+/* eslint-disable no-unused-vars */
+import { Checkbox, Pagination, Table } from 'antd';
+import moment from 'moment';
+import { useEffect, useState } from 'react';
+import { Trans } from 'react-i18next';
+import { useDispatch, useSelector } from 'react-redux';
+import { payNowListBilling } from 'redux/reducers/billingState';
+import { formatDollar } from 'utils/formatUsd';
+import RowItemPayment from 'views/billings/components/RowItemPayment';
+import '../../assets/styles/stylebilling.scss';
+import { t } from 'i18next';
+import Button from '../../components/Button';
+import { more } from '../const';
+import ModalPayNow from './ModalPayNow';
+
+const WaitingPayment = () => {
+  const innerWidth = useSelector((state) => state.innerWidth.width);
+  const [dataSource, setDataSource] = useState([]);
+  const dispatch = useDispatch();
+  const [listSelectTablet, setListSelectTablet] = useState([]);
+  const [pageCheckedAll, setPageCheckedAll] = useState([]);
+  const [page, setPage] = useState({ current: 1, prev: 0 });
+  const [payNowAmount, setPayNowAmount] = useState(null);
+  const { selectedIdList } = useSelector(({ billing }) => billing);
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [openPayNowModal, setOpenPayNowModal] = useState(false);
+  const now = moment().format('MMM Do YY, h:mm:ss');
+  const hasSelected = selectedRowKeys.length > 0 || listSelectTablet.length > 0;
+
+  // const [role, setRole] = useState('customer');
+  // render Random balance
+  Math.randomDec = function (min, max, decimals) {
+    return (Math.random() * (max - min) + min).toFixed(decimals || 2);
+  };
+  const data = [];
+  for (let i = 0; i < 20; i++) {
+    data.push({
+      key: i,
+      orderId: `PW${Math.ceil(Math.random() * 1000000)}`,
+      skuId: `PF${Math.ceil(Math.random() * 1000000)}`,
+      type: {
+        name: 'Docker (VN)',
+        detail: 'PW17-WCS-18INCHS-ORdsadasd orderefdasse ',
+      },
+      receivedTime: now,
+      approvedTime: now,
+      method: 'Balance',
+      price: Math.randomDec(-1, 999, 2),
+      status: 'Waiting Payment',
+      payment: 'Unpaid',
+      tracking: 'Pending',
+      quantity: '4',
+      checked: false,
+    });
+  }
+  const columns = [
+    {
+      title: t('content.ORDER_ID_NAME'),
+      key: 'orderId',
+      // fixed: "left",
+      align: 'left',
+      render: (r) => (
+        <div>
+          <p className="order__id font-bold">{r.orderId}</p>
+          <p className="order__id text-[#7A869A]">{r.orderId}</p>
+        </div>
+      ),
+    },
+
+    {
+      title: `${t('content.PRODUCT_TYPE')}`,
+      key: 'type',
+      className: 'product_type_col',
+      render: (r) => (
+        <div className="flex flex-col w-[160px]">
+          <Trans values={{ type: r.type.name }}>
+            <span className="truncate font-bold">{r.type.name}</span>
+          </Trans>
+          <span className="truncate">{r.type.detail}</span>
+        </div>
+      ),
+    },
+    {
+      title: `${t('content.STATUS')}`,
+      key: 'status',
+      align: 'center',
+      render: (r) => (
+        <div className="flex justify-center">
+          <div className={` ${r.status} status_btn status_waiting_pm `}>
+            <span className="text-white ">{r.status}</span>
+          </div>
+        </div>
+      ),
+      hidden: innerWidth <= 845,
+    },
+    {
+      title: `${t('content.PAYMENT')}`,
+      key: 'payment',
+      render: (r) => (
+        <div className={` ${r.status} status_btn bg-unpaid`}>
+          <span className="text-[#B54051] text-[12px]">{r.payment}</span>
+        </div>
+      ),
+    },
+    {
+      title: `${t('content.TRACKING')}`,
+      key: 'tracking',
+      render: (r) => (
+        <div className={` ${r.status} status_btn bg-pending `}>
+          <Trans i18nKey={r.tracking} values={{ type: r.tracking }} />
+        </div>
+      ),
+    },
+    {
+      title: `${t('content.QUANTITY')}`,
+      dataIndex: 'quantity',
+      align: 'right',
+      key: 'amount',
+    },
+    {
+      title: `${t('content.PRICE')}`,
+      align: 'right',
+      key: 'price',
+      render: (row) => <span>{row.price}$</span>,
+    },
+    {
+      title: `${t('content.RECEIVED_TIME')}`,
+      key: 'date',
+      width: 120,
+      render: (row) => <span>{row.receivedTime}</span>,
+      hidden: innerWidth <= 845,
+    },
+    {
+      title: `${t('content.APPROVED_TIME')}`,
+      key: 'date',
+      width: 120,
+      render: (row) => <span>{row.receivedTime}</span>,
+      hidden: innerWidth <= 845,
+    },
+  ].filter((item) => !item.hidden);
+
+  useEffect(() => {
+    const dataTablet = data.filter((value, index) => {
+      if (page.prev > 0) {
+        return page.prev * 10 <= index && index < page.current * 10;
+      }
+      return index < page.current * 10;
+    });
+    setDataSource(dataTablet);
+  }, [page.current]);
+
+  const onSelectChange = (newSelectedRowKeys, selectedRow) => {
+    // console.log("selectedRowKeys changed: ", selectedRowKeys);
+    setSelectedRowKeys(newSelectedRowKeys);
+    dispatch(payNowListBilling(selectedRow));
+  };
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+  };
+
+  useEffect(() => {
+    let prices = 0;
+    // if (innerWidth > 845) {
+    if (selectedIdList) {
+      prices = selectedIdList.reduce((total, current) => total + Number(current.price), 0);
+    }
+    setPayNowAmount(prices);
+    // } else if (selectedIdList) {
+    //   selectedIdList.forEach((value) => {
+    //     prices += Number(data[value]?.price);
+    //   });
+    //   setPayNowAmount(prices);
+    // }
+  }, [selectedIdList]);
+
+  const handleSelectTablet = (newSelected) => {
+    const tempData = [];
+    listSelectTablet.forEach((item) => {
+      if (item < page.prev * 10 || item >= page.current * 10) {
+        tempData.push(item);
+      }
+    });
+    newSelected.map((item) => (
+      tempData.push(item)
+    ));
+    setListSelectTablet(tempData);
+    dispatch(payNowListBilling(tempData));
+  };
+
+  const handleSelectAllTablet = (e) => {
+    const allData = [];
+    dataSource.map((value) => allData.push(value.key));
+    if (e.target.checked) {
+      setPageCheckedAll((prev) => [...prev, page.current]);
+      listSelectTablet.map((item) => {
+        if (allData.includes(item)) {
+          return;
+        }
+        return allData.push(item);
+      });
+      dispatch(payNowListBilling(allData));
+      setListSelectTablet(allData);
+    } else {
+      const tempData = [];
+      pageCheckedAll.forEach((item) => {
+        if (item === page.current) {
+          pageCheckedAll.splice(pageCheckedAll.indexOf(item), 1);
+        }
+      });
+      listSelectTablet.forEach((item) => {
+        if (item < page.prev * 10 || item >= page.current * 10) {
+          tempData.push(item);
+        }
+      });
+      setPageCheckedAll(pageCheckedAll);
+      setListSelectTablet(tempData);
+      dispatch(payNowListBilling(tempData));
+    }
+  };
+  const handleChangePage = (e) => {
+    setPage({ current: e, prev: e - 1 });
+  };
+
+  const handlePayNow = () => {
+    setOpenPayNowModal(true);
+  };
+
+  return (
+    <div className="relative">
+      {hasSelected ? (
+        <div className="extra_header_table extra_header_table_desktop">
+          <span className="row_length_selected">
+            {selectedRowKeys.length} {t('content.ITEM_SELECTED')}
+          </span>
+          <Button className="btn_paynow btn_paynow_on_row" onClick={() => handlePayNow()}>
+            {formatDollar(payNowAmount)} - {t('content.PAY_NOW')}
+          </Button>
+        </div>
+      ) : (
+        ''
+      )}
+      <ModalPayNow open={openPayNowModal} close={() => setOpenPayNowModal(false)} />
+      <div className="balance__table__content__data">
+        {/* {
+          innerWidth <= 845 ? (
+            <div>
+              <div className="checkbox_all_waiting_pm py-4 flex ">
+                <Checkbox
+                  className="mb-[24px] mt-2 ml-1"
+                  checked={pageCheckedAll.includes(page.current)}
+                  onChange={handleSelectAllTablet}
+                >
+                  {t('content.SELECT_ALL_ORDER')}
+                </Checkbox>
+              </div>
+              <Checkbox.Group
+                onChange={handleSelectTablet}
+                value={listSelectTablet}
+                className="w-full"
+              >
+                {dataSource.map((item, index) => (
+                  <div key={index}>
+                    <RowItemPayment
+                      item={item}
+                      checked={listSelectTablet.includes(item.key)}
+                      valueCheckbox={item.key}
+                    />
+                  </div>
+                ))}
+                <Pagination
+                  total={data.length}
+                  onChange={handleChangePage}
+                  responsive
+                  className="float-right"
+                  showSizeChanger={false}
+                />
+              </Checkbox.Group>
+            </div>
+          ) : ( */}
+        <Table
+          rowSelection={rowSelection}
+          columns={columns}
+          dataSource={data}
+          scroll={{ x: 'max-content' }}
+          defaultPageSize
+        />
+        {/* )
+        } */}
+
+      </div>
+    </div>
+  );
+};
+
+export default WaitingPayment;
