@@ -1,0 +1,222 @@
+/* eslint-disable camelcase */
+import { Modal, Button, Form, Input, message, Upload } from 'antd';
+import React, { useEffect, useState } from 'react';
+import '../assets/styles/stylebilling.scss';
+import { ArrowUpIcon } from 'components/icons';
+import { t } from 'i18next';
+import { uploadImageRequest } from 'utils/uploadImage';
+import { upload } from '../RoleBilling/const';
+
+const { TextArea } = Input;
+const { Dragger } = Upload;
+const ModalTopUp = ({ openTopUp, close }) => {
+  const [chosePayment, setChosePayment] = useState();
+  const [fileList, setFileList] = useState([]);
+  const props = {
+    name: 'file',
+    multiple: true,
+    customRequest: ({ file }) => {
+      const file_content = {
+        lastModified: file.lastModified,
+        lastModifiedDate: file.lastModifiedDate,
+        name: file.name,
+        originFileObj: file,
+        percent: 0,
+        size: file.size,
+        status: 'done',
+        type: file.type,
+        uid: file.uid,
+      };
+      console.log(file_content);
+      setFileList(file_content);
+    },
+
+    onChange(info) {
+      const { status } = info.file;
+
+      if (status !== 'uploading') {
+        console.log(info.file);
+        // setFileList(info.file);
+      }
+
+      if (status === 'done') {
+        message.success(`${info.file.name} file uploaded successfully.`);
+      } else if (status === 'error') {
+        message.error(`${info.file.name} file upload failed.`);
+      }
+    },
+
+    onDrop(e) {
+      console.log('Dropped files', e.dataTransfer.files);
+    },
+
+  };
+
+  const UpLoadImage = async () => {
+    if (fileList.originFileObj) {
+      let url_img = '';
+      const new_date = Date.now();
+      const fileType = fileList.name.split('.').pop();
+      const num = Math.floor(Math.random() * 90000) + 10000;
+      const fileName = `Blog-${num}-${new_date}.${fileType}`;
+      const up_file = await uploadImageRequest(
+        fileList.originFileObj,
+        fileName,
+      );
+      if (up_file) {
+        url_img = `https://home-new-blog.s3.ap-southeast-1.amazonaws.com/${fileName}`;
+        console.log(url_img);
+      }
+    }
+  };
+
+  useEffect(() => {
+    console.log(fileList);
+    UpLoadImage();
+  }, [fileList]);
+
+  return (
+    <Modal
+      centered
+      className="modal_topup_wrapper pw_modal_popup_payment"
+      open={openTopUp}
+      onCancel={close}
+      width={800}
+      title={t('alert.TOPUP')}
+      okText={t('alert.SUBMIT')}
+      cancelText={t('content.CANCEL')}
+    >
+      <div className="topup_modal_content_wrapper">
+        <div className="topup_modal_guide">
+          <span className="title">
+            {t('alert.GUILD_TOPUP_TITLE')}
+          </span>
+          <ul>
+            <li>
+              Payoneer:{' '}
+              <span className="text-[#F06022]">payment@printway.io</span>
+            </li>
+            <li>
+              Pingpong:{' '}
+              <span className="text-[#F06022]">payoneer@printway.io</span>
+            </li>
+            <li>
+              {t('alert.GUILD_TOPUP_3')}
+              <span className="text-[#F06022]">paypal@printway.io</span>
+            </li>
+            <li>
+              {t('alert.GUILD_TOPUP_4')}
+            </li>
+          </ul>
+        </div>
+        <div className="payment_form__wrapper mt-6">
+          <span className="font-bold text-[#091E42] text-[16px] leading-6">
+            {t('content.PAYMENT_METHOD')}<span className="text-[#F06022]">*</span>
+          </span>
+          <div className="flex gap-4 mt-4">
+            <div
+              className={chosePayment === 'payoneer' ? 'box_card_payment payment_active  w-1/3' : 'box_card_payment w-1/3'}
+              onClick={() => setChosePayment('payoneer')}
+            >
+              <img src="./assets/images/payoneer_lg.png" alt="payoneer" />
+            </div>
+            <div
+              className={chosePayment === 'pingpong' ? 'box_card_payment payment_active  w-1/3' : 'box_card_payment w-1/3'}
+              onClick={() => setChosePayment('pingpong')}
+            >
+              <img src="./assets/images/pingpong_lg.png" alt="pingpong" />
+            </div>
+            <div
+              className={chosePayment === 'paypal' ? 'box_card_payment payment_active  w-1/3' : 'box_card_payment w-1/3'}
+              onClick={() => setChosePayment('paypal')}
+            >
+              <img src="./assets/images/paypal_lg.png" alt="payoneer" />
+            </div>
+          </div>
+          <div className="mt-6">
+            <Form
+              name="wrap"
+              labelCol={{
+                flex: '110px',
+              }}
+              labelAlign="left"
+              labelWrap
+              wrapperCol={{
+                flex: 1,
+              }}
+              colon={false}
+            >
+              <div className="form_top_up flex gap-4 ">
+                <div className="w-1/2">
+                  <span className="title">
+                    {t('content.AMOUNT')}<span className="text-[#F06022]">*</span>{' '}
+                  </span>
+                  <Form.Item
+                    name="username"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                    ]}
+                  >
+                    <Input placeholder={t('content.AMOUNT_USD')} />
+                  </Form.Item>
+                </div>
+                <div className="w-1/2">
+                  <span className="title">
+                    {t('content.TRANSACTION_ID')}<span className="text-[#F06022]">*</span>
+                  </span>
+                  <Form.Item
+                    name="password"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                    ]}
+                  >
+                    <Input placeholder={t('content.TRANSACTION_ID')} />
+                  </Form.Item>
+                </div>
+              </div>
+              <div className="form__upload flex gap-4">
+                <div className="w-1/2  max-h-[148px]">
+                  <Dragger
+                    {...props}
+                  >
+                    <p className="ant-upload-drag-icon flex justify-center items-center">
+                      {upload}
+                    </p>
+                    <p className="upload-hint">
+                      {t('alert.UPLOAD_PROOF')}
+                    </p>
+                    <p className="flex justify-center items-center mt-3">
+                      <Button className="flex items-center text-[#42526E] text-[12px]">
+                        {t('content.CHOOSE_FILE')}<ArrowUpIcon />
+                      </Button>
+                    </p>
+                  </Dragger>
+                </div>
+                <div className="note__payment w-1/2 min-h-[148px]">
+                  <TextArea
+                    className="h-full"
+                    placeholder={t('content.NOTE_OPTIONAL')}
+                    autoSize
+                  />
+                </div>
+              </div>
+
+              {/* <Form.Item>
+                <Button type="primary" htmlType="submit">
+                  Submit
+                </Button>
+              </Form.Item> */}
+            </Form>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+export default ModalTopUp;
+
